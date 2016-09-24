@@ -5,8 +5,8 @@
 #define MAX_DISTANCE 500
 
 const int pinOut = 13;
-unsigned int maxFq = 33000;//65535
-unsigned int minFq = 30000; 
+unsigned int maxFq = 1500;//65535
+unsigned int minFq = 350; 
 int dist = 0;
 int fqNow;
 
@@ -20,6 +20,20 @@ void loop()
 {
   int uS = sonar.ping();
   int cm = abs(uS/ US_ROUNDTRIP_CM);
+  if (cm >= MAX_DISTANCE || cm==0)
+  {
+    Serial.print("Ping: ");
+    Serial.print(cm);
+    Serial.println("cm");
+    dist=MAX_DISTANCE;
+    fqNow=map(dist,1,MAX_DISTANCE,minFq,maxFq);
+    fqNow= (-1)*(fqNow-maxFq);
+    tone(pinOut,fqNow);
+    Serial.print("Frequency is ");
+    Serial.print(fqNow);
+    Serial.println("Hz");
+  }
+  else{
   Serial.print("Ping: ");
   Serial.print(cm);
   Serial.println("cm");
@@ -30,4 +44,5 @@ void loop()
   Serial.print("Frequency is ");
   Serial.print(fqNow);
   Serial.println("Hz");
+  }
 }
