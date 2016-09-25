@@ -1,42 +1,44 @@
-/*********************************************************************
- This is an example for our nRF51822 based Bluefruit LE modules
-
- Pick one up today in the adafruit shop!
-
- Adafruit invests time and resources providing this open source code,
- please support Adafruit and open-source hardware by purchasing
- products from Adafruit!
-
- MIT license, check LICENSE for more information
- All text above, and the splash screen below must be included in
- any redistribution
-*********************************************************************/
-
+//ble
 #include <Arduino.h>
 #include <SPI.h>
 #if not defined (_VARIANT_ARDUINO_DUE_X_) && not defined (_VARIANT_ARDUINO_ZERO_)
   #include <SoftwareSerial.h>
 #endif
-
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
 #include "Adafruit_BluefruitLE_UART.h"
-
 #include "BluefruitConfig.h"
+//ble end
+//sonar
+#include <NewPing.h>
+#define ECHO_PIN_L  3
+#define ECHO_PIN_C  5
+#define ECHO_PIN_R  6
+#define TRIGGER_PIN     2
+#define MAX_DISTANCE 300
+//#define MAX_DISTANCE_L 300
+//#define MAX_DISTANCE_C 500
+//#define MAX_DISTANCE_R 300
+#define PING_INTERVAL 60
+#define SONAR_NUM 3
+unsigned long pingTimer[SONAR_NUM]; // When each pings.
+unsigned int cm[SONAR_NUM]; // Store ping distances.
+unsigned int fqNow[SONAR_NUM];
+uint8_t currentSensor = 0; // Which sensor is active.
+unsigned int maxFq = 1500;//65535 max for tone()
+unsigned int minFq = 350;//35 min for tone()
+int dist = 0;
+const int pinOut = 13;
+//sonar object array.
+NewPing sonar[SONAR_NUM] =
+{ 
+  NewPing(TRIGGER_PIN, ECHO_PIN_L, MAX_DISTANCE),
+  NewPing(TRIGGER_PIN, ECHO_PIN_C, MAX_DISTANCE),
+  NewPing(TRIGGER_PIN, ECHO_PIN_R, MAX_DISTANCE),
+};
 
-//sonar
-      #include <NewPing.h>
-       
-      #define TRIGGER_PIN  2
-      #define ECHO_PIN     6
-      #define MAX_DISTANCE 500
-      
-      const int pinOut = 13;
-      unsigned int maxFq = 1500;//65535
-      unsigned int minFq = 350; 
-      int dist = 0;
-      int fqNow;
-//sonar
+//sonar end
+
 
 /*=========================================================================
     APPLICATION SETTINGS
@@ -106,13 +108,10 @@ void error(const __FlashStringHelper*err) {
             automatically on startup)
 */
 /**************************************************************************/
-//sonar
-      NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
-//sonar
 
 void setup(void)
 {
-  //while (!Serial);  // required for Flora & Micro
+
   delay(200);
 
   Serial.begin(115200);
@@ -164,108 +163,55 @@ void setup(void)
     ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
     Serial.println(F("******************************"));
   }
+    Serial.println(F("Initializing pings..."));
+   pingTimer[0] = millis() + 75; // First ping start in ms.
+  for (uint8_t i = 1; i < SONAR_NUM; i++)
+    pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
+  Serial.println(F("OK!") );
 }
 
-/**************************************************************************/
-/*!
-    @brief  Constantly poll for new command or response data
-*/
-/**************************************************************************/
 void loop(void)
 {
-
-  //sonar
-        int uS = sonar.ping_median();
-        int cm = abs(uS/ US_ROUNDTRIP_CM);
-        if (cm >= MAX_DISTANCE || cm==0)
-        {
-          Serial.print(uS);
-          Serial.print("Ping: ");
-          Serial.print(cm);
-          Serial.println("cm");
-          dist=MAX_DISTANCE;
-          fqNow=map(dist,1,MAX_DISTANCE,minFq,maxFq);
-          fqNow= (-1)*(fqNow-maxFq);
-          tone(pinOut,fqNow);
-          Serial.print("Fq is ");
-          Serial.print(fqNow);
-          Serial.println("Hz");
-        }
-        else{
-          Serial.print(uS);
-        Serial.print("Ping: ");
-        Serial.print(cm);
-        Serial.println("cm");
-        dist=cm;
-        fqNow=map(dist,1,MAX_DISTANCE,minFq,maxFq);
-        fqNow= (-1)*(fqNow-maxFq);
-        tone(pinOut,fqNow);
-        Serial.print("FQ is ");
-        Serial.print(fqNow);
-        Serial.println("Hz");
-        }
-  //sonar
-  
-  // Check for user input
-  char inputs[BUFSIZE+1];
-
-//sonar to bluetooth section
-    ble.print("AT+BLEUARTTX= Dist ");
-    ble.println(cm);
-//end//sonar to bluetooth section
-
-
-// I think we could delete all of this section
-    if ( getUserInput(inputs, BUFSIZE) ){
-      // Send characters to Bluefruit
-      Serial.print("[Send] ");
-      Serial.println(inputs);
-  
-      ble.print("AT+BLEUARTTX=");
-      ble.println(inputs);
-  
-      // check response stastus
-      if (! ble.waitForOK() ) {
-        Serial.println(F("Failed to send?"));
-      }
+    for (uint8_t i = 0; i < SONAR_NUM; i++) {
+    if (millis() >= pingTimer[i]) {
+      pingTimer[i] += PING_INTERVAL * SONAR_NUM;
+      if (i == 0 && currentSensor == SONAR_NUM - 1)
+        oneSensorCycle(); // Do something with results.
+      sonar[currentSensor].timer_stop();
+      currentSensor = i;
+      cm[currentSensor] = 0;
+      sonar[currentSensor].ping_timer(echoCheck);
     }
-//end// I think we could delete all of this section
-
-
-  // Check for incoming characters from Bluefruit
-  ble.println("AT+BLEUARTRX");
-  ble.readline();
-  if (strcmp(ble.buffer, "OK") == 0) {
-    // no data
-    return;
   }
-  // Some data was found, its in the buffer
-  Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
-  ble.waitForOK();
 }
 
-/**************************************************************************/
-/*!
-    @brief  Checks for user input (via the Serial Monitor)
-*/
-/**************************************************************************/
-bool getUserInput(char buffer[], uint8_t maxSize)
-{
-  // timeout in 100 milliseconds
-  TimeoutTimer timeout(100);
+void echoCheck() { // If ping echo, set distance to array.
+  if (sonar[currentSensor].check_timer())
+    cm[currentSensor] = sonar[currentSensor].ping_median() / US_ROUNDTRIP_CM;
+    fqNow[currentSensor] = map(cm[currentSensor], 1, MAX_DISTANCE, minFq, maxFq);
+    fqNow[currentSensor] = (-1) * (fqNow[currentSensor] - maxFq);
+}
+void oneSensorCycle() { // Do something with the results.
+  for (uint8_t i = 0; i < SONAR_NUM; i++) {
 
-  memset(buffer, 0, maxSize);
-  while( (!Serial.available()) && !timeout.expired() ) { delay(1); }
-
-  if ( timeout.expired() ) return false;
-
-  delay(2);
-  uint8_t count=0;
-  do
-  {
-    count += Serial.readBytes(buffer+count, maxSize);
-    delay(2);
-  } while( (count < maxSize) && (Serial.available()) );
-
-  return true;
+      ble.print("AT+BLEUARTTX= #");
+      ble.print(i);
+      ble.print(" Ping: ");
+      ble.print(cm[i]);
+      ble.print("cm");
+      ble.print("Fq: ");
+      ble.print(fqNow[i]);
+      ble.println("Hz");
+      Serial.print("#");
+      Serial.print(i);
+      Serial.print(" Ping: ");
+      Serial.print(cm[i]);
+      Serial.print("cm");
+      Serial.print("Fq: ");
+      Serial.print(fqNow[i]);
+      Serial.println("Hz");
+      tone(pinOut, fqNow[i]);
+  }
+  ble.println("AT+BLEUARTTX= CYCLE END");
+  Serial.println("CYCLE END");
 }
