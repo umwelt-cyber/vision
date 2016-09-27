@@ -11,16 +11,16 @@
 //ble end
 //sonar
 #include <NewPing.h>
-#define ECHO_PIN_L  3
+//#define ECHO_PIN_L  3
 #define ECHO_PIN_C  5
-#define ECHO_PIN_R  6
+  //#define ECHO_PIN_R  6
 #define TRIGGER_PIN     2
 #define MAX_DISTANCE 300
-//#define MAX_DISTANCE_L 300
-//#define MAX_DISTANCE_C 500
-//#define MAX_DISTANCE_R 300
+  //#define MAX_DISTANCE_L 300
+  //#define MAX_DISTANCE_C 500
+  //#define MAX_DISTANCE_R 300
 #define PING_INTERVAL 60
-#define SONAR_NUM 3
+#define SONAR_NUM 1
 unsigned long pingTimer[SONAR_NUM]; // When each pings.
 unsigned int cm[SONAR_NUM]; // Store ping distances.
 unsigned int fqNow[SONAR_NUM];
@@ -32,9 +32,9 @@ const int pinOut = 13;
 //sonar object array.
 NewPing sonar[SONAR_NUM] =
 { 
-  NewPing(TRIGGER_PIN, ECHO_PIN_L, MAX_DISTANCE),
+  //NewPing(TRIGGER_PIN, ECHO_PIN_L, MAX_DISTANCE),
   NewPing(TRIGGER_PIN, ECHO_PIN_C, MAX_DISTANCE),
-  NewPing(TRIGGER_PIN, ECHO_PIN_R, MAX_DISTANCE),
+  //  NewPing(TRIGGER_PIN, ECHO_PIN_R, MAX_DISTANCE),
 };
 
 //sonar end
@@ -79,41 +79,32 @@ NewPing sonar[SONAR_NUM] =
 // Create the bluefruit object, either software serial...uncomment these lines
 /*
 SoftwareSerial bluefruitSS = SoftwareSerial(BLUEFRUIT_SWUART_TXD_PIN, BLUEFRUIT_SWUART_RXD_PIN);
-
 Adafruit_BluefruitLE_UART ble(bluefruitSS, BLUEFRUIT_UART_MODE_PIN,
                       BLUEFRUIT_UART_CTS_PIN, BLUEFRUIT_UART_RTS_PIN);
 */
-
 /* ...or hardware serial, which does not need the RTS/CTS pins. Uncomment this line */
 // Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
-
 /* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
-
 /* ...software SPI, using SCK/MOSI/MISO user-defined SPI pins and then user selected CS/IRQ/RST */
-//Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_SCK, BLUEFRUIT_SPI_MISO,
-//                             BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS,
-//                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
-
-
+/*Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_SCK, BLUEFRUIT_SPI_MISO,
+                            BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS,
+                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+*/
 // A small helper
 void error(const __FlashStringHelper*err) {
   Serial.println(err);
   while (1);
 }
 
-/**************************************************************************/
-/*!
+/*
     @brief  Sets up the HW an the BLE module (this function is called
             automatically on startup)
 */
-/**************************************************************************/
 
 void setup(void)
 {
-
   delay(200);
-
   Serial.begin(115200);
   Serial.println(F("Adafruit Bluefruit Command Mode Example"));
   Serial.println(F("---------------------------------------"));
@@ -164,7 +155,7 @@ void setup(void)
     Serial.println(F("******************************"));
   }
     Serial.println(F("Initializing pings..."));
-   pingTimer[0] = millis() + 75; // First ping start in ms.
+  pingTimer[0] = millis() + 75; // First ping start in ms.
   for (uint8_t i = 1; i < SONAR_NUM; i++)
     pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;
   Serial.println(F("OK!") );
@@ -195,7 +186,7 @@ void oneSensorCycle() { // Do something with the results.
   for (uint8_t i = 0; i < SONAR_NUM; i++) {
 
       ble.print("AT+BLEUARTTX= #");
-      ble.print(i);
+      ble.print(i+1);
       ble.print(" Ping: ");
       ble.print(cm[i]);
       ble.print("cm");
@@ -203,7 +194,7 @@ void oneSensorCycle() { // Do something with the results.
       ble.print(fqNow[i]);
       ble.println("Hz");
       Serial.print("#");
-      Serial.print(i);
+      Serial.print(i+1);
       Serial.print(" Ping: ");
       Serial.print(cm[i]);
       Serial.print("cm");
