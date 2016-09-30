@@ -28,7 +28,7 @@
       #include <NewPing.h>
        
       #define TRIGGER_PIN  2
-      #define ECHO_PIN     6
+      #define ECHO_PIN     5
       #define MAX_DISTANCE 500
       
       const int pinOut = 13;

@@ -203,6 +203,6 @@ void oneSensorCycle() { // Do something with the results.
       Serial.println("Hz");
       tone(pinOut, fqNow[i]);
   }
-  ble.println("AT+BLEUARTTX= CYCLE END");
-  Serial.println("CYCLE END");
+  //ble.println("AT+BLEUARTTX= CYCLE END");
+  //Serial.println("CYCLE END");
 }
